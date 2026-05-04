@@ -405,6 +405,72 @@
   .print-doc .rest-day-print { color: #999; font-style: italic; font-size: 0.9rem; padding: 6px 14px; }
   .print-doc .print-footer { margin-top: 32px; border-top: 1px solid #ddd; padding-top: 12px; font-size: 0.75rem; color: #aaa; text-align: center; }
 
+  /* ── MODE TOGGLE ── */
+  .mode-toggle {
+    display: flex; gap: 0; margin-bottom: 24px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+    overflow: hidden; width: fit-content;
+  }
+  .mode-btn {
+    font-family: 'Barlow Condensed', sans-serif; font-size: 0.9rem; font-weight: 700;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 11px 22px; background: none; border: none; color: var(--text-muted);
+    cursor: pointer; transition: all 0.15s; border-right: 1px solid var(--border);
+  }
+  .mode-btn:last-child { border-right: none; }
+  .mode-btn:hover { color: var(--text); background: var(--surface2); }
+  .mode-btn.active { background: var(--accent); color: #000; }
+
+  /* ── IMPORT DEST ROW ── */
+  .import-dest-row {
+    display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-end;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 16px 20px; margin-bottom: 20px;
+  }
+  .import-dest-group { display: flex; flex-direction: column; gap: 6px; }
+  .import-dest-group label {
+    font-family: 'Barlow Condensed', sans-serif; font-size: 0.78rem;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted);
+  }
+  .import-dest-group select, .import-dest-group input[type=number] {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 3px;
+    padding: 9px 14px; color: var(--text); font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.9rem; outline: none; cursor: pointer; transition: border-color 0.15s;
+  }
+  .import-dest-group select { min-width: 220px; }
+  .import-dest-group input[type=number] { width: 90px; }
+  .import-dest-group select:focus, .import-dest-group input:focus { border-color: var(--accent); }
+
+  /* ── COPY PANEL ── */
+  .copy-week-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 20px; margin-bottom: 16px;
+  }
+  .copy-row { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 16px; }
+
+  .copy-preview { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+  .copy-preview-title {
+    font-family: 'Barlow Condensed', sans-serif; font-size: 0.78rem;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px;
+  }
+  .copy-preview-days { display: flex; flex-wrap: wrap; gap: 8px; }
+  .copy-day-chip {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 4px; padding: 8px 14px;
+    font-family: 'Barlow Condensed', sans-serif; font-size: 0.85rem;
+  }
+  .copy-day-chip .chip-day { font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em; }
+  .copy-day-chip .chip-count { color: var(--text-muted); font-size: 0.78rem; margin-top: 2px; }
+
+  .copy-options { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--surface3); }
+  .copy-check-label {
+    display: flex; align-items: center; gap: 8px; cursor: pointer;
+    font-family: 'Barlow Condensed', sans-serif; font-size: 0.88rem; color: var(--text-muted);
+    letter-spacing: 0.04em;
+  }
+  .copy-check-label input[type=checkbox] { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; }
+  .copy-check-label:hover { color: var(--text); }
+
   /* ── SCROLLBAR ── */
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: var(--bg); }
@@ -448,38 +514,91 @@
 
   <!-- IMPORT PANEL -->
   <div class="panel" id="panel-import">
-    <div class="section-title">Import Weekly Workout</div>
-    <div class="section-sub">Paste your trainer's weekly plan or drag & drop the text file. Then assign it to a block and week.</div>
+    <div class="section-title">Add Week</div>
+    <div class="section-sub">Import from your trainer's text, or copy an existing week from any block.</div>
 
-    <div class="week-label-row" style="margin-bottom:20px">
-      <label>Block</label>
-      <select id="import-block-select" style="background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:9px 14px;color:var(--text);font-family:'Barlow Condensed',sans-serif;font-size:0.9rem;outline:none;min-width:180px;cursor:pointer">
-        <option value="">— Select block —</option>
-      </select>
-      <label>Week #</label>
-      <input type="number" id="import-week" value="1" min="1" max="12">
+    <!-- Mode Toggle -->
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="mode-btn-import" onclick="switchImportMode('import')">📋 Import from Text</button>
+      <button class="mode-btn" id="mode-btn-copy" onclick="switchImportMode('copy')">📑 Copy Existing Week</button>
     </div>
 
-    <div class="import-grid">
-      <div class="import-box">
-        <h3>📋 Paste Text</h3>
-        <textarea id="paste-input" placeholder="Paste your weekly workout here...&#10;&#10;Monday&#10;&#10;• Mobility work...&#10;• Anti-Rotation...&#10;&#10;Tuesday&#10;..."></textarea>
+    <!-- Destination row (shared) -->
+    <div class="import-dest-row">
+      <div class="import-dest-group">
+        <label>Destination Block</label>
+        <select id="import-block-select">
+          <option value="">— Select block —</option>
+        </select>
       </div>
-      <div class="import-box">
-        <h3>📁 Upload File</h3>
-        <div class="file-drop" id="file-drop" onclick="document.getElementById('file-input').click()">
-          <div class="drop-icon">📄</div>
-          <p>Drop .txt file here<br>or click to browse</p>
-          <small>Supports .txt files</small>
+      <div class="import-dest-group">
+        <label>Save as Week #</label>
+        <input type="number" id="import-week" value="1" min="1" max="12">
+      </div>
+    </div>
+
+    <!-- ── MODE A: Import from text ── -->
+    <div id="import-mode-import">
+      <div class="import-grid">
+        <div class="import-box">
+          <h3>📋 Paste Text</h3>
+          <textarea id="paste-input" placeholder="Paste your weekly workout here...&#10;&#10;Monday&#10;&#10;• Mobility work...&#10;• Anti-Rotation...&#10;&#10;Tuesday&#10;..."></textarea>
         </div>
-        <input type="file" id="file-input" accept=".txt">
+        <div class="import-box">
+          <h3>📁 Upload File</h3>
+          <div class="file-drop" id="file-drop" onclick="document.getElementById('file-input').click()">
+            <div class="drop-icon">📄</div>
+            <p>Drop .txt file here<br>or click to browse</p>
+            <small>Supports .txt files</small>
+          </div>
+          <input type="file" id="file-input" accept=".txt">
+        </div>
+      </div>
+      <div class="import-actions">
+        <button class="btn btn-primary" onclick="importWorkout()">Import Week</button>
+        <button class="btn btn-secondary" onclick="clearImport()">Clear</button>
       </div>
     </div>
 
-    <div class="import-actions">
-      <button class="btn btn-primary" onclick="importWorkout()">Import Week</button>
-      <button class="btn btn-secondary" onclick="clearImport()">Clear</button>
+    <!-- ── MODE B: Copy existing week ── -->
+    <div id="import-mode-copy" style="display:none">
+      <div class="copy-week-card">
+        <div class="copy-row">
+          <div class="import-dest-group">
+            <label>Copy from Block</label>
+            <select id="copy-source-block" onchange="onCopyBlockChange()">
+              <option value="">— Select source block —</option>
+            </select>
+          </div>
+          <div class="import-dest-group">
+            <label>Week to Copy</label>
+            <select id="copy-source-week">
+              <option value="">— Select week —</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Week preview -->
+        <div id="copy-preview" class="copy-preview" style="display:none">
+          <div class="copy-preview-title">Week Preview</div>
+          <div id="copy-preview-days" class="copy-preview-days"></div>
+        </div>
+
+        <div class="copy-options">
+          <label class="copy-check-label">
+            <input type="checkbox" id="copy-include-progress"> Copy progress (ticked exercises)
+          </label>
+          <label class="copy-check-label">
+            <input type="checkbox" id="copy-include-notes"> Copy notes &amp; comments
+          </label>
+        </div>
+      </div>
+
+      <div class="import-actions">
+        <button class="btn btn-primary" onclick="copyWeek()">Copy Week</button>
+      </div>
     </div>
+
     <div id="import-alert"></div>
   </div>
 
@@ -963,10 +1082,123 @@ function selectDay(d) {
 
 // ── IMPORT ─────────────────────────────────────────────────
 function renderImportBlockSelect() {
-  const sel = document.getElementById('import-block-select');
-  sel.innerHTML = '<option value="">— Select block —</option>' + state.blocks.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
-  if (state.activeBlock) sel.value = state.activeBlock;
+  const opts = '<option value="">— Select block —</option>' + state.blocks.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+  document.getElementById('import-block-select').innerHTML = opts;
+  document.getElementById('copy-source-block').innerHTML = opts;
+  if (state.activeBlock) {
+    document.getElementById('import-block-select').value = state.activeBlock;
+    document.getElementById('copy-source-block').value = state.activeBlock;
+    onCopyBlockChange();
+  }
 }
+
+// ── IMPORT MODE TOGGLE ─────────────────────────────────────
+function switchImportMode(mode) {
+  document.getElementById('import-mode-import').style.display = mode === 'import' ? '' : 'none';
+  document.getElementById('import-mode-copy').style.display   = mode === 'copy'   ? '' : 'none';
+  document.getElementById('mode-btn-import').classList.toggle('active', mode === 'import');
+  document.getElementById('mode-btn-copy').classList.toggle('active',   mode === 'copy');
+  document.getElementById('import-alert').innerHTML = '';
+}
+
+// ── COPY WEEK ──────────────────────────────────────────────
+function onCopyBlockChange() {
+  const blockId = document.getElementById('copy-source-block').value;
+  const wSel = document.getElementById('copy-source-week');
+  const preview = document.getElementById('copy-preview');
+  wSel.innerHTML = '<option value="">— Select week —</option>';
+  preview.style.display = 'none';
+  if (!blockId) return;
+  const block = state.blocks.find(b => b.id === blockId);
+  const loaded = Object.keys(block.weeks || {}).map(Number).sort((a,b) => a-b);
+  loaded.forEach(w => {
+    const opt = document.createElement('option');
+    opt.value = w; opt.textContent = `Week ${w}`;
+    wSel.appendChild(opt);
+  });
+  wSel.onchange = () => renderCopyPreview(blockId, parseInt(wSel.value));
+}
+
+function renderCopyPreview(blockId, weekNum) {
+  const preview = document.getElementById('copy-preview');
+  const daysEl  = document.getElementById('copy-preview-days');
+  if (!blockId || !weekNum) { preview.style.display = 'none'; return; }
+  const block = state.blocks.find(b => b.id === blockId);
+  const week  = (block.weeks || {})[weekNum];
+  if (!week) { preview.style.display = 'none'; return; }
+  daysEl.innerHTML = DAYS.map(d => {
+    const exs = week[d];
+    if (!exs || !exs.length) return '';
+    const isRest = exs.length === 1 && exs[0].name.toUpperCase().includes('REST');
+    return `<div class="copy-day-chip">
+      <div class="chip-day">${d.slice(0,3)}</div>
+      <div class="chip-count">${isRest ? 'Rest' : exs.length + ' exercise' + (exs.length !== 1 ? 's' : '')}</div>
+    </div>`;
+  }).join('');
+  preview.style.display = 'block';
+}
+
+function copyWeek() {
+  const srcBlockId  = document.getElementById('copy-source-block').value;
+  const srcWeekNum  = parseInt(document.getElementById('copy-source-week').value);
+  const destBlockId = document.getElementById('import-block-select').value;
+  const destWeekNum = parseInt(document.getElementById('import-week').value);
+  const inclProgress = document.getElementById('copy-include-progress').checked;
+  const inclNotes    = document.getElementById('copy-include-notes').checked;
+
+  if (!srcBlockId)           return showAlert('error', 'Please select a source block.');
+  if (!srcWeekNum)           return showAlert('error', 'Please select a week to copy.');
+  if (!destBlockId)          return showAlert('error', 'Please select a destination block.');
+  if (!destWeekNum || destWeekNum < 1 || destWeekNum > 12)
+                             return showAlert('error', 'Destination week must be 1–12.');
+
+  const srcBlock  = state.blocks.find(b => b.id === srcBlockId);
+  const destBlock = state.blocks.find(b => b.id === destBlockId);
+  const srcWeek   = (srcBlock.weeks || {})[srcWeekNum];
+
+  if (!srcWeek) return showAlert('error', 'Source week has no data.');
+
+  // Warn if overwriting
+  if ((destBlock.weeks || {})[destWeekNum]) {
+    if (!confirm(`Week ${destWeekNum} in "${destBlock.name}" already has data. Overwrite it?`)) return;
+  }
+
+  // Deep copy exercises (no references)
+  if (!destBlock.weeks) destBlock.weeks = {};
+  destBlock.weeks[destWeekNum] = JSON.parse(JSON.stringify(srcWeek));
+
+  // Optionally copy progress
+  if (inclProgress) {
+    if (!destBlock.progress) destBlock.progress = {};
+    DAYS.forEach(day => {
+      const exs = srcWeek[day] || [];
+      exs.forEach((_, i) => {
+        const srcKey  = `${srcWeekNum}-${day}-${i}`;
+        const destKey = `${destWeekNum}-${day}-${i}`;
+        if ((srcBlock.progress || {})[srcKey]) destBlock.progress[destKey] = true;
+      });
+    });
+  }
+
+  // Optionally copy notes/comments
+  if (inclNotes) {
+    if (!destBlock.comments) destBlock.comments = {};
+    DAYS.forEach(day => {
+      const exs = srcWeek[day] || [];
+      exs.forEach((_, i) => {
+        const srcKey  = `${srcWeekNum}-${day}-${i}`;
+        const destKey = `${destWeekNum}-${day}-${i}`;
+        const note = (srcBlock.comments || {})[srcKey];
+        if (note) destBlock.comments[destKey] = note;
+      });
+    });
+  }
+
+  save();
+  const totalEx = Object.values(srcWeek).reduce((a, exs) => a + exs.length, 0);
+  showAlert('success', `✓ Week ${srcWeekNum} from "${srcBlock.name}" copied to Week ${destWeekNum} of "${destBlock.name}" — ${totalEx} exercises.`);
+}
+
 
 function importWorkout() {
   const text = document.getElementById('paste-input').value.trim();
