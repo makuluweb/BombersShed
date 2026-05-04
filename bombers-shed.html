@@ -262,6 +262,51 @@
   .ex-comment textarea:focus { border-color: var(--accent); }
   .comment-label { font-family: 'Barlow Condensed', sans-serif; font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 4px; }
 
+  /* ── EXERCISE EDIT CONTROLS ── */
+  .ex-edit-controls {
+    display: flex; gap: 4px; align-items: center; opacity: 0; transition: opacity 0.15s; margin-left: auto;
+  }
+  .exercise-block:hover .ex-edit-controls { opacity: 1; }
+  .ex-ctrl-btn {
+    background: var(--surface3); border: 1px solid var(--border);
+    color: var(--text-muted); border-radius: 3px; width: 26px; height: 26px;
+    font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all 0.12s; padding: 0; line-height: 1;
+  }
+  .ex-ctrl-btn:hover:not(:disabled) { background: var(--surface2); color: var(--text); border-color: var(--accent); }
+  .ex-ctrl-btn:disabled { opacity: 0.2; cursor: default; }
+  .ex-ctrl-del:hover:not(:disabled) { border-color: var(--red); color: var(--red); background: rgba(224,92,42,0.08); }
+
+  .ex-name { cursor: pointer; flex: 1; }
+  .ex-name:hover { color: var(--accent); }
+  .ex-name-input {
+    background: var(--surface2); border: 1px solid var(--accent);
+    border-radius: 3px; padding: 3px 8px; color: var(--text);
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 700;
+    font-size: 1.05rem; letter-spacing: 0.05em; width: 100%; outline: none;
+  }
+
+  .edit-hint { font-size: 0.7rem; color: var(--text-dim); font-style: italic; text-transform: none; letter-spacing: 0; }
+  .ex-detail { cursor: pointer; }
+  .ex-detail:hover { border-color: var(--accent); }
+  .ex-detail-edit {
+    width: 100%; min-height: 80px;
+    background: var(--surface2); border: 1px solid var(--accent);
+    border-radius: 4px; padding: 10px 12px; color: var(--text);
+    font-family: 'Barlow', sans-serif; font-size: 0.88rem; line-height: 1.7;
+    resize: vertical; outline: none; margin-bottom: 10px;
+  }
+
+  .btn-add-exercise {
+    width: 100%; margin-top: 8px; padding: 12px;
+    background: none; border: 2px dashed var(--border);
+    border-radius: 6px; color: var(--text-muted);
+    font-family: 'Barlow Condensed', sans-serif; font-size: 0.9rem;
+    font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .btn-add-exercise:hover { border-color: var(--accent); color: var(--accent); background: rgba(232,200,74,0.04); }
+
   /* ── PROGRESS ── */
   .progress-bar-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 16px 18px; margin-bottom: 20px; }
   .progress-label { font-family: 'Barlow Condensed', sans-serif; font-size: 0.8rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; display: flex; justify-content: space-between; }
@@ -636,7 +681,8 @@ function renderProgram() {
             <div class="progress-label"><span>Day Progress</span><span>${prog.done}/${prog.total} exercises</span></div>
             <div class="progress-track"><div class="progress-fill" id="day-progress-fill" style="width:${pct}%"></div></div>
           </div>
-          ${dayData.map((ex, i) => renderExercise(block, state.activeWeek, state.activeDay, ex, i)).join('')}`;
+          ${dayData.map((ex, i) => renderExercise(block, state.activeWeek, state.activeDay, ex, i, dayData.length)).join('')}
+          <button class="btn-add-exercise" onclick="addExercise(${state.activeWeek},'${state.activeDay}')">+ Add Exercise</button>`;
       }
     } else {
       dayContentHtml = `<div class="rest-day"><div class="rest-icon">😴</div><h2>Rest Day</h2></div>`;
@@ -662,24 +708,170 @@ function renderProgram() {
   `;
 }
 
-function renderExercise(block, week, day, ex, idx) {
+function renderExercise(block, week, day, ex, idx, total) {
   const key = `${week}-${day}-${idx}`;
   const checked = (block.progress || {})[key] || false;
   const comment = ((block.comments || {})[key]) || '';
+  const detailFormatted = formatDetail(ex.detail);
+  const canMoveUp = idx > 0;
+  const canMoveDown = idx < total - 1;
   return `<div class="exercise-block ${checked ? 'completed' : ''}" id="exblock-${key}">
     <div class="ex-header">
       <div class="ex-check ${checked ? 'checked' : ''}" onclick="toggleExercise('${key}')"></div>
-      <div class="ex-name">${ex.name}</div>
+      <div class="ex-name" id="exname-${key}" onclick="startEditName('${key}')" title="Click to edit">${ex.name}</div>
+      <div class="ex-edit-controls">
+        <button class="ex-ctrl-btn" onclick="moveExercise('${week}','${day}',${idx},-1)" ${canMoveUp ? '' : 'disabled'} title="Move up">↑</button>
+        <button class="ex-ctrl-btn" onclick="moveExercise('${week}','${day}',${idx},1)" ${canMoveDown ? '' : 'disabled'} title="Move down">↓</button>
+        <button class="ex-ctrl-btn ex-ctrl-del" onclick="deleteExercise('${week}','${day}',${idx})" title="Delete exercise">✕</button>
+      </div>
       <div class="ex-expand" id="expand-${key}" onclick="toggleExpand('${key}')">▾</div>
     </div>
     <div class="ex-body" id="body-${key}">
-      <div class="ex-detail">${formatDetail(ex.detail)}</div>
+      <div class="ex-detail-wrap">
+        <div class="comment-label" style="margin-bottom:4px">Instructions / Detail <span class="edit-hint">— click to edit</span></div>
+        <div class="ex-detail" id="exdetail-view-${key}" onclick="startEditDetail('${key}')" title="Click to edit">${detailFormatted || '<span style="color:var(--text-dim);font-style:italic">No detail — click to add...</span>'}</div>
+        <textarea class="ex-detail-edit" id="exdetail-edit-${key}" style="display:none" onblur="saveDetail('${key}',this.value)" onkeydown="if(event.key==='Escape')cancelEditDetail('${key}')">${ex.detail || ''}</textarea>
+      </div>
       <div class="ex-comment">
         <div class="comment-label">Notes / Weight / Time</div>
         <textarea placeholder="Add your notes, weight used, time, etc..." onchange="saveComment('${key}', this.value)">${comment}</textarea>
       </div>
     </div>
   </div>`;
+}
+
+function startEditName(key) {
+  const nameEl = document.getElementById('exname-' + key);
+  const current = nameEl.textContent.trim();
+  nameEl.innerHTML = `<input class="ex-name-input" id="exname-input-${key}" value="${current.replace(/"/g,'&quot;')}" onblur="saveEditName('${key}',this.value)" onkeydown="if(event.key==='Enter'||event.key==='Escape')this.blur()" onclick="event.stopPropagation()">`;
+  const inp = document.getElementById('exname-input-' + key);
+  inp.focus(); inp.select();
+}
+
+function saveEditName(key, val) {
+  const [week, day, idx] = parseKey(key);
+  const block = state.blocks.find(b => b.id === state.activeBlock);
+  const ex = block.weeks[week][day][idx];
+  ex.name = val.trim() || ex.name;
+  save();
+  const nameEl = document.getElementById('exname-' + key);
+  if (nameEl) { nameEl.textContent = ex.name; nameEl.onclick = () => startEditName(key); }
+}
+
+function startEditDetail(key) {
+  const view = document.getElementById('exdetail-view-' + key);
+  const edit = document.getElementById('exdetail-edit-' + key);
+  if (!view || !edit) return;
+  view.style.display = 'none';
+  edit.style.display = 'block';
+  edit.focus();
+  // Auto-size
+  edit.style.height = 'auto';
+  edit.style.height = Math.max(80, edit.scrollHeight) + 'px';
+}
+
+function cancelEditDetail(key) {
+  const [week, day, idx] = parseKey(key);
+  const block = state.blocks.find(b => b.id === state.activeBlock);
+  const ex = block.weeks[week][day][idx];
+  const view = document.getElementById('exdetail-view-' + key);
+  const edit = document.getElementById('exdetail-edit-' + key);
+  edit.value = ex.detail || '';
+  edit.style.display = 'none';
+  view.style.display = '';
+}
+
+function saveDetail(key, val) {
+  const [week, day, idx] = parseKey(key);
+  const block = state.blocks.find(b => b.id === state.activeBlock);
+  const ex = block.weeks[week][day][idx];
+  ex.detail = val.trim();
+  save();
+  const view = document.getElementById('exdetail-view-' + key);
+  const edit = document.getElementById('exdetail-edit-' + key);
+  if (view) {
+    view.innerHTML = formatDetail(ex.detail) || '<span style="color:var(--text-dim);font-style:italic">No detail — click to add...</span>';
+    view.style.display = '';
+  }
+  if (edit) edit.style.display = 'none';
+}
+
+function deleteExercise(week, day, idx) {
+  if (!confirm('Remove this exercise?')) return;
+  const block = state.blocks.find(b => b.id === state.activeBlock);
+  block.weeks[week][day].splice(idx, 1);
+  // Shift progress/comment keys down
+  const progress = block.progress || {};
+  const comments = block.comments || {};
+  const total = block.weeks[week][day].length + 1; // was +1 before deletion
+  for (let i = idx; i < total; i++) {
+    const oldKey = `${week}-${day}-${i+1}`;
+    const newKey = `${week}-${day}-${i}`;
+    if (progress[oldKey] !== undefined) { progress[newKey] = progress[oldKey]; delete progress[oldKey]; }
+    if (comments[oldKey] !== undefined) { comments[newKey] = comments[oldKey]; delete comments[oldKey]; }
+  }
+  // Clean up deleted index leftovers
+  delete progress[`${week}-${day}-${total-1}`];
+  delete comments[`${week}-${day}-${total-1}`];
+  save();
+  renderProgram();
+}
+
+function moveExercise(week, day, idx, dir) {
+  const block = state.blocks.find(b => b.id === state.activeBlock);
+  const arr = block.weeks[week][day];
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= arr.length) return;
+  // Swap exercises
+  [arr[idx], arr[newIdx]] = [arr[newIdx], arr[idx]];
+  // Swap progress/comment keys
+  const progress = block.progress || {};
+  const comments = block.comments || {};
+  const keyA = `${week}-${day}-${idx}`;
+  const keyB = `${week}-${day}-${newIdx}`;
+  [progress[keyA], progress[keyB]] = [progress[keyB], progress[keyA]];
+  [comments[keyA], comments[keyB]] = [comments[keyB], comments[keyA]];
+  // Clean undefined
+  if (!progress[keyA]) delete progress[keyA];
+  if (!progress[keyB]) delete progress[keyB];
+  if (!comments[keyA]) delete comments[keyA];
+  if (!comments[keyB]) delete comments[keyB];
+  save();
+  renderProgram();
+  // Re-open the moved card
+  const newKey = `${week}-${day}-${newIdx}`;
+  setTimeout(() => { 
+    const body = document.getElementById('body-' + newKey);
+    const icon = document.getElementById('expand-' + newKey);
+    if (body) { body.classList.add('open'); icon && icon.classList.add('open'); }
+  }, 10);
+}
+
+function addExercise(week, day) {
+  const block = state.blocks.find(b => b.id === state.activeBlock);
+  if (!block.weeks[week]) block.weeks[week] = {};
+  if (!block.weeks[week][day]) block.weeks[week][day] = [];
+  block.weeks[week][day].push({ name: 'New Exercise', detail: '' });
+  save();
+  renderProgram();
+  // Auto-open the new card for editing
+  const newIdx = block.weeks[week][day].length - 1;
+  const newKey = `${week}-${day}-${newIdx}`;
+  setTimeout(() => {
+    const body = document.getElementById('body-' + newKey);
+    const icon = document.getElementById('expand-' + newKey);
+    if (body) { body.classList.add('open'); icon && icon.classList.add('open'); }
+    startEditName(newKey);
+  }, 20);
+}
+
+function parseKey(key) {
+  const parts = key.split('-');
+  // key format: week-day-idx  (day may be multi-part but we join from index 1 to length-1)
+  const week = parseInt(parts[0]);
+  const idx = parseInt(parts[parts.length - 1]);
+  const day = parts.slice(1, parts.length - 1).join('-');
+  return [week, day, idx];
 }
 
 function formatDetail(detail) {
