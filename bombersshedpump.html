@@ -1417,7 +1417,7 @@
     <div class="regen-panel" id="regenPanel" style="display:none">
       <div class="regen-inner">
         <div class="regen-title">Swap an Exercise</div>
-        <p class="regen-desc">Tell the coach which exercise isn't working for you and what to replace it with.</p>
+        <p class="regen-desc">Tell Bomber which exercise isn't working for you and what to replace it with.</p>
         <textarea id="regenInput" class="regen-textarea" placeholder="e.g. Replace barbell bench press — don't have a rack. Give me something with dumbbells instead."></textarea>
         <div class="regen-footer">
           <button class="regen-cancel" onclick="closeRegen()">Cancel</button>
@@ -1586,7 +1586,7 @@ Exercises with sets × reps (or duration) and rest periods. Use **bold** for exe
 3-4 static stretches.
 
 ## The Verdict
-Short summary: estimated calorie burn, key muscles hit, and one motivational line in the coach's voice.
+Short summary: estimated calorie burn, key muscles hit, and one motivational line under the heading "Bomber's Wise Words".
 
 Keep it punchy. Old iron. No machines unless the equipment list includes them.`;
 
@@ -1655,7 +1655,7 @@ Keep it punchy. Old iron. No machines unless the equipment list includes them.`;
 
   async function doRegen() {
     const instruction = document.getElementById('regenInput').value.trim();
-    if (!instruction) { showToast('Tell the coach what to swap.', true); return; }
+    if (!instruction) { showToast("Tell Bomber what to swap.", true); return; }
     if (!currentWorkout) return;
 
     const btn     = document.getElementById('regenConfirmBtn');
@@ -1672,7 +1672,7 @@ ${currentWorkout}
 
 The athlete has a request: "${instruction}"
 
-Update ONLY the specific exercise(s) mentioned. Keep the rest of the programme identical — same structure, same sections, same format. Return the full updated programme using the same ## heading format. Be gruff and direct in any coaching notes.`;
+Update ONLY the specific exercise(s) mentioned. Keep the rest of the programme identical — same structure, same sections, same format. Return the full updated programme using the same ## heading format. Channel Bomber's wise words — gruff, direct, no nonsense.`;
 
     try {
       const text = await callApi([{ role: 'user', content: prompt }]);
